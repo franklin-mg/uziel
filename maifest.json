@@ -1,24 +1,24 @@
 {
-"name": "GameUziel Multijuegos",
-"short_name": "GameUziel",
-"description": "Una colección de minijuegos educativos y divertidos desarrollados por GameUziel.",
-"start_url": "index.html",
-"display": "fullscreen",
-"orientation": "portrait",
-"background_color": "#1a1a2e",
-"theme_color": "#1a1a2e",
-"icons": [
-{
-"src": "icon-192.png",
-"sizes": "192x192",
-"type": "image/png",
-"purpose": "any maskable"
-},
-{
-"src": "icon-512.png",
-"sizes": "512x512",
-"type": "image/png",
-"purpose": "any maskable"
-}
-]
+  "name": "GameUziel - Multijuegos",
+  "short_name": "GameUziel",
+  "description": "Minijuegos educativos de letras, figuras y frutas.",
+  "start_url": "index.html",
+  "display": "fullscreen",
+  "background_color": "#1a1a2e",
+  "theme_color": "#1a1a2e",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
