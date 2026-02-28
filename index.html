@@ -2,18 +2,16 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GameUziel - Multijuegos</title>
     
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1a1a2e">
-    
+    <meta name="theme-color" content="#673AB7">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="GameUziel">
     
     <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Rubik:wght@700;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
     <style>
         :root {
@@ -39,10 +37,6 @@
         body {
             margin: 0;
             padding: 0;
-            padding-top: env(safe-area-inset-top);
-            padding-bottom: env(safe-area-inset-bottom);
-            padding-left: env(safe-area-inset-left);
-            padding-right: env(safe-area-inset-right);
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -76,14 +70,6 @@
             justify-content: center;
         }
 
-        #confetti-canvas {
-            position: absolute;
-            inset: 0;
-            pointer-events: none;
-            z-index: 3000;
-            display: none;
-        }
-
         .overlay-screen {
             position: absolute;
             inset: 0;
@@ -94,28 +80,30 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
-            gap: 15px;
+            gap: 12px;
             text-align: center;
         }
 
-        .menu-title { font-family: var(--font-bold); font-size: 2.2rem; color: var(--accent-cyan); }
+        .menu-title { font-family: var(--font-bold); font-size: 2.2rem; color: var(--accent-cyan); margin-bottom: 10px; }
 
         .mode-btn {
             width: 100%;
             max-width: 300px;
-            padding: 18px;
+            padding: 16px;
             border: none;
             border-radius: 20px;
             font-family: var(--font-bold);
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: white;
             box-shadow: 0 6px 0 rgba(0,0,0,0.4);
             cursor: pointer;
             text-transform: uppercase;
+            transition: transform 0.1s;
         }
 
         .mode-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0,0,0,0.4); }
 
+        /* UI COMÚN */
         .game-ui-overlay {
             position: absolute;
             top: 0; left: 0; right: 0;
@@ -140,61 +128,91 @@
         #score-tag { background: var(--accent-cyan); color: #000; }
         #timer-tag { background: #ff5252; color: white; }
 
+        /* RETO DE LETRAS - CARTAS GRANDES */
         #memory-grid {
             display: none;
-            width: 95%;
-            height: 80%;
-            gap: 20px;
+            gap: 15px;
+            padding: 20px;
+            perspective: 1000px;
             justify-content: center;
             align-content: center;
-            margin-top: 40px;
+            width: 100%;
+            height: 100%;
         }
 
         .letter-card {
-            width: 100%; height: 100%; max-height: 280px; aspect-ratio: 2 / 3;
-            background: #0f3460; border: 6px solid var(--accent-cyan);
-            border-radius: 25px; display: flex; align-items: center; justify-content: center;
-            font-family: var(--font-bold); color: transparent; cursor: pointer;
-            transition: transform 0.3s ease, background 0.3s, border-color 0.3s;
-            position: relative; box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+            width: 110px;
+            height: 160px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
         }
 
-        .letter-card.flipped { background: white; color: #1a1a2e; border-color: var(--accent-amber); transform: scale(1.05); }
-        .letter-card.matched { opacity: 0; pointer-events: none; transform: scale(0.8); transition: all 0.5s ease; }
+        .letter-card.flipped { transform: rotateY(180deg); }
 
+        .card-face {
+            position: absolute;
+            inset: 0;
+            backface-visibility: hidden;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-bold);
+            font-size: 4rem;
+            border: 5px solid var(--accent-cyan);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.4);
+        }
+
+        .card-front { background: #0f3460; color: transparent; }
+        .card-back { background: var(--accent-purple); color: white; transform: rotateY(180deg); }
+
+        /* FRUTAS */
         #fruits-table {
             display: none; position: absolute; top: 80px; bottom: 20px;
-            width: 98%; max-width: 900px; background: radial-gradient(circle, #1e2a4a 0%, #0f172a 100%);
+            width: 95%; max-width: 800px; background: radial-gradient(circle, #1e2a4a 0%, #0f172a 100%);
             border-radius: 20px; overflow: hidden; border: 2px solid rgba(255,255,255,0.1);
         }
 
         .fruit-card {
-            position: absolute; width: 90px; height: 90px; background: white;
+            position: absolute; width: 85px; height: 85px; background: white;
             border-radius: 15px; border: 3px solid #ccc; display: flex;
             align-items: center; justify-content: center; cursor: pointer;
-            transition: transform 0.2s, opacity 0.5s; font-size: 2.8rem;
+            transition: transform 0.2s, opacity 0.5s; font-size: 2.5rem;
             box-shadow: 2px 4px 6px rgba(0,0,0,0.5);
         }
 
-        .fruit-card.selected { z-index: 1000 !important; border-color: var(--accent-cyan); box-shadow: 0 0 15px var(--accent-cyan); transform: scale(1.1) rotate(0deg) !important; }
-        .fruit-card.vanish { opacity: 0; transform: scale(0.1); pointer-events: none; }
+        /* LABERINTO */
+        #maze-container {
+            display: none; position: relative; width: 95vw; height: 95vw; max-width: 500px; max-height: 500px;
+            background: #000; border: 4px solid var(--accent-amber); overflow: hidden;
+        }
+        .maze-wall { position: absolute; background: #1a1a2e; }
+        #maze-player { 
+            position: absolute; width: 20px; height: 20px; background: var(--accent-yellow); 
+            border-radius: 50%; box-shadow: 0 0 15px var(--accent-yellow); z-index: 100;
+        }
+        #maze-goal {
+            position: absolute; width: 20px; height: 20px; background: var(--accent-green);
+            z-index: 90; display: flex; align-items: center; justify-content: center; font-size: 1rem;
+        }
+        .maze-controls {
+            display: none; position: absolute; bottom: 10px; width: 100%;
+            justify-content: center; gap: 10px; padding: 10px;
+        }
+        .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(255,255,255,0.2); border: 2px solid white; color: white; font-size: 1.5rem; }
 
+        /* LLUVIA */
         #falling-area { display: none; position: absolute; inset: 0; overflow: hidden; }
-        #falling-container { position: absolute; left: 50%; transform: translateX(-50%); width: 95%; max-width: 800px; height: 100%; background: rgba(255,255,255,0.03); }
-
-        .falling-shape { position: absolute; width: 98px; height: 98px; cursor: pointer; filter: drop-shadow(0 4px 4px rgba(0,0,0,0.4)); transition: transform 0.1s; }
-
+        #falling-container { position: absolute; left: 50%; transform: translateX(-50%); width: 85%; max-width: 600px; height: 100%; }
         #falling-targets {
-            display: none; position: absolute; bottom: 20px; left: 50%;
-            transform: translateX(-50%); width: 95%; max-width: 800px;
-            background: rgba(15, 52, 96, 0.9); padding: 12px; border-radius: 20px;
-            display: flex; justify-content: space-around; border: 2px solid var(--accent-cyan);
+            display: none; position: absolute; bottom: 30px; left: 50%;
+            transform: translateX(-50%); width: 95%; max-width: 600px;
+            background: rgba(15, 52, 96, 0.95); padding: 15px; border-radius: 25px;
+            justify-content: space-around; border: 3px solid var(--accent-cyan);
             z-index: 1000;
         }
-
-        .target-slot { display: flex; flex-direction: column; align-items: center; gap: 5px; font-family: var(--font-bold); color: white; opacity: 0.8; transition: all 0.3s; }
-        .target-slot.completed { opacity: 1; transform: scale(1.1); text-shadow: 0 0 10px currentColor; }
-        .target-icon { width: 45px; height: 45px; }
 
         footer { height: 40px; background: #0f3460; color: #536dfe; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; }
     </style>
@@ -207,173 +225,198 @@
 </header>
 
 <div id="game-area">
-    <canvas id="confetti-canvas"></canvas>
-
     <div id="menu-overlay" class="overlay-screen">
         <h1 class="menu-title">GAMEUZIEL</h1>
         <button class="mode-btn" style="background: var(--accent-purple)" onclick="showDifficulty('letters')">RETO DE LETRAS</button>
         <button class="mode-btn" style="background: var(--accent-cyan); color: #000;" onclick="startGame('falling')">LLUVIA DE FIGURAS</button>
         <button class="mode-btn" style="background: var(--accent-pink)" onclick="startGame('fruits')">FIESTA DE FRUTAS</button>
+        <button class="mode-btn" style="background: var(--accent-amber); color: #000;" onclick="startGame('maze')">EL LABERINTO</button>
     </div>
 
     <div id="diff-overlay" class="overlay-screen" style="display:none">
         <h2 class="menu-title" style="font-size:1.5rem">¿CUÁNTAS CARTAS?</h2>
-        <button class="mode-btn" style="background: #4caf50" onclick="startGame('letters', 4)">4 CARTAS (FÁCIL)</button>
-        <button class="mode-btn" style="background: #ff9800" onclick="startGame('letters', 6)">6 CARTAS (MEDIO)</button>
-        <button class="mode-btn" style="background: #f44336" onclick="startGame('letters', 8)">8 CARTAS (DIFÍCIL)</button>
+        <button class="mode-btn" style="background: #4caf50" onclick="startGame(state.mode, 4)">4 CARTAS</button>
+        <button class="mode-btn" style="background: #ff9800" onclick="startGame(state.mode, 6)">6 CARTAS</button>
+        <button class="mode-btn" style="background: #f44336" onclick="startGame(state.mode, 8)">8 CARTAS</button>
         <button class="mode-btn" style="background: #333" onclick="backToMenu()">VOLVER</button>
     </div>
 
     <div class="game-ui-overlay" id="game-ui" style="display:none">
-        <button class="ui-tag" style="background: #16213e; color: #fff; border: 1px solid #fff; pointer-events: auto;" onclick="backToMenu()">SALIR</button>
+        <button class="ui-tag" style="background: #16213e; color: #fff; border: 1px solid #fff; pointer-events: auto;" onclick="backToMenu()">VOLVER</button>
         <div id="timer-tag" class="ui-tag">00:00</div>
         <div id="score-tag" class="ui-tag">PUNTOS: 0</div>
     </div>
 
+    <!-- Contenedores de Juego -->
     <div id="memory-grid"></div>
     <div id="falling-area"><div id="falling-container"></div></div>
     <div id="fruits-table"></div>
+    <div id="maze-container">
+        <div id="maze-board"></div>
+        <div id="maze-player"></div>
+        <div id="maze-goal">🏁</div>
+    </div>
 
-    <div id="falling-targets" style="display:none">
-        <div class="target-slot" id="target-circle" style="color: var(--accent-cyan)">
-            <svg class="target-icon" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="currentColor"/></svg>
-            <span class="count-text">0/5</span>
+    <div id="falling-targets">
+        <div class="target-slot" id="target-circle" style="color: var(--accent-cyan); opacity: 0.6; display:flex; flex-direction:column; align-items:center;">
+            <svg width="25" height="25" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" fill="currentColor"/></svg>
+            <span class="count-text" style="font-size:0.7rem">0/10</span>
         </div>
-        <div class="target-slot" id="target-square" style="color: var(--accent-pink)">
-            <svg class="target-icon" viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" fill="currentColor"/></svg>
-            <span class="count-text">0/5</span>
+        <div class="target-slot" id="target-square" style="color: var(--accent-pink); opacity: 0.6; display:flex; flex-direction:column; align-items:center;">
+            <svg width="25" height="25" viewBox="0 0 100 100"><rect x="15" y="15" width="70" height="70" fill="currentColor"/></svg>
+            <span class="count-text" style="font-size:0.7rem">0/10</span>
         </div>
-        <div class="target-slot" id="target-triangle" style="color: var(--accent-green)">
-            <svg class="target-icon" viewBox="0 0 100 100"><polygon points="50,15 90,85 10,85" fill="currentColor"/></svg>
-            <span class="count-text">0/5</span>
+        <div class="target-slot" id="target-triangle" style="color: var(--accent-green); opacity: 0.6; display:flex; flex-direction:column; align-items:center;">
+            <svg width="25" height="25" viewBox="0 0 100 100"><polygon points="50,15 90,85 10,85" fill="currentColor"/></svg>
+            <span class="count-text" style="font-size:0.7rem">0/10</span>
         </div>
-        <div class="target-slot" id="target-star" style="color: var(--accent-yellow)">
-            <svg class="target-icon" viewBox="0 0 100 100"><polygon points="50,5 61,35 95,35 67,55 78,85 50,70 22,85 33,55 5,35 39,35" fill="currentColor"/></svg>
-            <span class="count-text">0/5</span>
+        <div class="target-slot" id="target-star" style="color: var(--accent-yellow); opacity: 0.6; display:flex; flex-direction:column; align-items:center;">
+            <svg width="25" height="25" viewBox="0 0 100 100"><polygon points="50,5 61,35 95,35 67,55 78,85 50,70 22,85 33,55 5,35 39,35" fill="currentColor"/></svg>
+            <span class="count-text" style="font-size:0.7rem">0/10</span>
+        </div>
+    </div>
+
+    <div id="maze-controls" class="maze-controls">
+        <button class="ctrl-btn" onclick="moveMaze('up')">↑</button>
+        <div style="display:flex; gap:10px;">
+            <button class="ctrl-btn" onclick="moveMaze('left')">←</button>
+            <button class="ctrl-btn" onclick="moveMaze('down')">↓</button>
+            <button class="ctrl-btn" onclick="moveMaze('right')">→</button>
         </div>
     </div>
 
     <div id="win-overlay" class="overlay-screen" style="display:none">
-        <h2 style="color: var(--accent-amber); font-size: 2.5rem;">¡EXCELENTE!</h2>
+        <h2 style="color: var(--accent-amber); font-size: 2.5rem; font-family: var(--font-bold);">¡TRIUNFO! 🔔</h2>
         <div id="summary-container"></div>
-        <button id="win-main-btn" class="mode-btn" style="background: var(--accent-cyan); color: #000;" onclick="handleWinButtonClick()">JUGAR OTRA VEZ</button>
-        <button id="win-menu-btn" class="mode-btn" style="background: #333; display: none;" onclick="backToMenu()">VOLVER AL MENU</button>
+        <button class="mode-btn" style="background: var(--accent-cyan); color: #000;" onclick="backToMenu()">MENÚ PRINCIPAL</button>
     </div>
 </div>
 
 <footer>tecnotips © - 2026 | GAMEUZIEL</footer>
 
 <script>
-    const VOCALS = ['A', 'E', 'I', 'O', 'U'];
+    /** * REGISTRO DEL SERVICE WORKER (PWA)
+     */
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then(registration => {
+                    console.log('ServiceWorker registrado con éxito:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('Error al registrar el ServiceWorker:', error);
+                });
+        });
+    }
+
+    const apiKey = ""; 
+    const VOCALS = ['A', 'a', 'E', 'e', 'I', 'i', 'O', 'o', 'U', 'u'];
     const SHAPES = [
         { id: 'circle', color: 'var(--accent-cyan)' },
         { id: 'square', color: 'var(--accent-pink)' },
         { id: 'triangle', color: 'var(--accent-green)' },
         { id: 'star', color: 'var(--accent-yellow)' }
     ];
-    const FRUITS_LIST = ['🍓', '🍎', '🍌', '🍇', '🍉', '🍊', '🍍', '🍒', '🍐', '🍋', '🥝', '🍑', '🥥', '🫐', '🍈'];
+    const FRUITS_LIST = ['🍓', '🍎', '🍌', '🍇', '🍉', '🍊', '🍍', '🍒'];
 
-    let state = { mode: null, score: 0, timeLeft: 60, active: false };
+    let state = { mode: null, score: 0, timeLeft: 120, active: false };
     let timerInt, spawnInt;
     let selectedCards = [];
     let matchesFound = 0;
     let totalPairs = 0;
     let shapeCounts = { circle: 0, square: 0, triangle: 0, star: 0 };
+    let maze = { grid: [], size: 15, cellSize: 0, player: {x: 1, y: 1}, goal: {x: 13, y: 13} };
 
-    // --- EFECTO DE SONIDO: TADA! ---
-    function playTada() {
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        function playNote(freq, start, duration, vol) {
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            
-            osc.type = 'triangle'; // Sonido suave pero brillante
-            osc.frequency.setValueAtTime(freq, start);
-            
-            gain.gain.setValueAtTime(0, start);
-            gain.gain.linearRampToValueAtTime(vol, start + 0.05);
-            gain.gain.exponentialRampToValueAtTime(0.01, start + duration);
-            
+    // --- EFECTOS DE SONIDO Y LLUVIA DE CONFETI ---
+    async function playTriumph() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const playBell = (freq, startTime) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0.5, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 1.5);
             osc.connect(gain);
-            gain.connect(audioCtx.destination);
+            gain.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 1.5);
+        };
+        playBell(880, ctx.currentTime);
+        playBell(1108, ctx.currentTime + 0.1);
+        playBell(1320, ctx.currentTime + 0.2);
+
+        const end = Date.now() + 4000;
+        const colors = ['#00bcd4', '#e91e63', '#ffc107', '#4caf50', '#9c27b0'];
+        
+        (function frame() {
+            confetti({
+                particleCount: 5,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0, y: 0.6 },
+                colors: colors
+            });
+            confetti({
+                particleCount: 5,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1, y: 0.6 },
+                colors: colors
+            });
             
-            osc.start(start);
-            osc.stop(start + duration);
-        }
-
-        const now = audioCtx.currentTime;
-        // El clásico "Ta-da!": Nota corta seguida de nota larga más alta
-        playNote(523.25, now, 0.2, 0.3);        // Do5
-        playNote(659.25, now + 0.15, 0.8, 0.4); // Mi5 vibrante
-        
-        setTimeout(() => audioCtx.close(), 1500);
-    }
-
-    // --- EFECTO CONFETI ---
-    const confettiCanvas = document.getElementById('confetti-canvas');
-    const ctx = confettiCanvas.getContext('2d');
-    let particles = [];
-    let confettiActive = false;
-
-    function resizeConfetti() {
-        confettiCanvas.width = window.innerWidth;
-        confettiCanvas.height = window.innerHeight;
-    }
-    window.addEventListener('resize', resizeConfetti);
-    resizeConfetti();
-
-    class Confetti {
-        constructor() {
-            this.x = Math.random() * confettiCanvas.width;
-            this.y = Math.random() * confettiCanvas.height - confettiCanvas.height;
-            this.size = Math.random() * 8 + 4;
-            this.color = `hsl(${Math.random() * 360}, 70%, 60%)`;
-            this.speedY = Math.random() * 3 + 2;
-            this.speedX = Math.random() * 2 - 1;
-            this.rotation = Math.random() * 360;
-            this.rotationSpeed = Math.random() * 10 - 5;
-        }
-        update() {
-            this.y += this.speedY;
-            this.x += this.speedX;
-            this.rotation += this.rotationSpeed;
-            if (this.y > confettiCanvas.height) this.y = -20;
-        }
-        draw() {
-            ctx.save();
-            ctx.translate(this.x, this.y);
-            ctx.rotate(this.rotation * Math.PI / 180);
-            ctx.fillStyle = this.color;
-            ctx.fillRect(-this.size/2, -this.size/2, this.size, this.size);
-            ctx.restore();
-        }
-    }
-
-    function triggerWinEffects() {
-        const DURATION = 5000;
-        
-        confettiActive = true;
-        confettiCanvas.style.display = 'block';
-        particles = Array.from({length: 120}, () => new Confetti());
-        
-        // Ejecutar sonido Ta-da!
-        playTada();
-
-        const startTime = Date.now();
-        function animate() {
-            if (!confettiActive) return;
-            ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-            particles.forEach(p => { p.update(); p.draw(); });
-            
-            if (Date.now() - startTime < DURATION) {
-                requestAnimationFrame(animate);
-            } else {
-                confettiActive = false;
-                confettiCanvas.style.display = 'none';
+            if (Math.random() > 0.7) {
+                confetti({
+                    particleCount: 2,
+                    origin: { x: Math.random(), y: -0.1 },
+                    gravity: 0.8,
+                    scalar: 0.7,
+                    colors: colors
+                });
             }
-        }
-        animate();
+
+            if (Date.now() < end) {
+                requestAnimationFrame(frame);
+            }
+        }());
+
+        const phrases = ["Say cheerfully: ¡Increíble! ¡Lograste el triunfo!", "Say cheerfully: ¡Felicidades! ¡Eres el mejor!"];
+        const text = phrases[Math.floor(Math.random() * phrases.length)];
+        try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text }] }],
+                    generationConfig: {
+                        responseModalities: ["AUDIO"],
+                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: "Puck" } } }
+                    }
+                })
+            });
+            const result = await response.json();
+            const pcm = result.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+            if (pcm) {
+                const blob = pcmToWav(pcm, 24000);
+                new Audio(URL.createObjectURL(blob)).play();
+            }
+        } catch (e) {}
+    }
+
+    function pcmToWav(base64, sampleRate) {
+        const byteChars = atob(base64);
+        const buffer = new ArrayBuffer(byteChars.length);
+        const view = new DataView(buffer);
+        for (let i = 0; i < byteChars.length; i++) view.setUint8(i, byteChars.charCodeAt(i));
+        const wavHeader = new ArrayBuffer(44);
+        const hv = new DataView(wavHeader);
+        hv.setUint32(0, 0x52494646, false); hv.setUint32(4, 36 + buffer.byteLength, true);
+        hv.setUint32(8, 0x57415645, false); hv.setUint32(12, 0x666d7420, false);
+        hv.setUint32(16, 16, true); hv.setUint16(20, 1, true); hv.setUint16(22, 1, true);
+        hv.setUint32(24, sampleRate, true); hv.setUint32(28, sampleRate * 2, true);
+        hv.setUint16(32, 2, true); hv.setUint16(34, 16, true);
+        hv.setUint32(36, 0x64617461, false); hv.setUint32(40, buffer.byteLength, true);
+        return new Blob([wavHeader, buffer], { type: "audio/wav" });
     }
 
     // --- LÓGICA DE NAVEGACIÓN ---
@@ -385,197 +428,229 @@
 
     function backToMenu() {
         state.active = false;
-        confettiActive = false;
-        confettiCanvas.style.display = 'none';
         clearInterval(timerInt);
         clearInterval(spawnInt);
         document.getElementById('menu-overlay').style.display = 'flex';
         document.getElementById('diff-overlay').style.display = 'none';
-        document.getElementById('game-ui').style.display = 'none';
         document.getElementById('win-overlay').style.display = 'none';
-        document.getElementById('memory-grid').style.display = 'none';
-        document.getElementById('falling-area').style.display = 'none';
-        document.getElementById('fruits-table').style.display = 'none';
-        document.getElementById('falling-targets').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'none';
+        
+        ['memory-grid', 'falling-area', 'fruits-table', 'maze-container', 'falling-targets', 'maze-controls'].forEach(id => {
+            document.getElementById(id).style.display = 'none';
+        });
         document.getElementById('current-mode-label').innerText = "MENU";
     }
 
-    function handleWinButtonClick() {
-        if (state.mode === 'letters') {
-            document.getElementById('win-overlay').style.display = 'none';
-            document.getElementById('memory-grid').style.display = 'none';
-            document.getElementById('game-ui').style.display = 'none';
-            showDifficulty('letters');
-        } else {
-            backToMenu();
-        }
-    }
-
     function startGame(mode, diff) {
-        state.mode = mode;
-        state.score = 0;
-        state.timeLeft = (mode === 'falling') ? 60 : 120;
-        state.active = true;
-        matchesFound = 0;
-        selectedCards = [];
-        shapeCounts = { circle: 0, square: 0, triangle: 0, star: 0 };
-
+        state.mode = mode; state.score = 0; state.timeLeft = 120; state.active = true;
+        matchesFound = 0; selectedCards = [];
         document.getElementById('menu-overlay').style.display = 'none';
         document.getElementById('diff-overlay').style.display = 'none';
         document.getElementById('game-ui').style.display = 'flex';
-        document.getElementById('score-tag').innerText = "PUNTOS: 0";
-        
+        document.getElementById('win-overlay').style.display = 'none';
+        document.getElementById('score-tag').innerText = `PUNTOS: 0`;
+
         if (mode === 'letters') initLetters(diff);
         if (mode === 'falling') initFalling();
         if (mode === 'fruits') initFruits();
+        if (mode === 'maze') initMaze();
 
         startGlobalTimer();
     }
 
-    // --- INICIALIZACIÓN DE JUEGOS ---
+    // --- JUEGO: RETO DE LETRAS ---
     function initLetters(count) {
         const grid = document.getElementById('memory-grid');
-        grid.style.display = 'grid';
+        grid.style.display = 'flex';
+        grid.style.flexWrap = 'wrap';
         grid.innerHTML = '';
-        document.getElementById('current-mode-label').innerText = "LETRAS";
+        document.getElementById('current-mode-label').innerText = "VOCALES";
         
         totalPairs = count / 2;
         let pool = [...VOCALS].sort(() => 0.5 - Math.random()).slice(0, totalPairs);
-        let deck = [];
-        pool.forEach(char => {
-            const finalChar = Math.random() > 0.5 ? char.toUpperCase() : char.toLowerCase();
-            deck.push(finalChar); deck.push(finalChar);
-        });
-        deck.sort(() => 0.5 - Math.random());
-
-        grid.style.gridTemplateColumns = `repeat(${count === 4 ? 2 : (count === 6 ? 3 : 4)}, 1fr)`;
-        deck.forEach(letter => {
+        let deck = [...pool, ...pool].sort(() => 0.5 - Math.random());
+        
+        deck.forEach(val => {
             const card = document.createElement('div');
             card.className = 'letter-card';
-            card.innerText = letter;
-            card.style.fontSize = (count === 4) ? "8rem" : (count === 6) ? "6rem" : "5rem";
-            card.onclick = () => {
-                if (selectedCards.length < 2 && !card.classList.contains('flipped')) {
-                    card.classList.add('flipped');
-                    selectedCards.push(card);
-                    if (selectedCards.length === 2) checkLetterMatch();
-                }
-            };
+            card.innerHTML = `
+                <div class="card-face card-front">?</div>
+                <div class="card-face card-back">${val}</div>
+            `;
+            card.dataset.value = val;
+            card.onclick = () => flipLetter(card);
             grid.appendChild(card);
         });
     }
 
-    function checkLetterMatch() {
-        const [c1, c2] = selectedCards;
-        if (c1.innerText === c2.innerText) {
-            setTimeout(() => {
-                c1.classList.add('matched'); c2.classList.add('matched');
-                state.score += 200; matchesFound++;
+    function flipLetter(card) {
+        if (!state.active || card.classList.contains('flipped') || selectedCards.length >= 2) return;
+        card.classList.add('flipped');
+        selectedCards.push(card);
+
+        if (selectedCards.length === 2) {
+            const [c1, c2] = selectedCards;
+            if (c1.dataset.value === c2.dataset.value) {
+                state.score += 500;
+                matchesFound++;
+                selectedCards = [];
                 document.getElementById('score-tag').innerText = `PUNTOS: ${state.score}`;
-                selectedCards = [];
-                if (matchesFound === totalPairs) winGame();
-            }, 500);
-        } else {
-            setTimeout(() => {
-                c1.classList.remove('flipped'); c2.classList.remove('flipped');
-                selectedCards = [];
-            }, 1000);
-        }
-    }
-
-    function initFalling() {
-        const container = document.getElementById('falling-container');
-        document.getElementById('falling-area').style.display = 'block';
-        document.getElementById('falling-targets').style.display = 'flex';
-        container.innerHTML = '';
-        document.getElementById('current-mode-label').innerText = "LLUVIA";
-
-        spawnInt = setInterval(() => {
-            if (!state.active) return;
-            const shape = document.createElement('div');
-            shape.className = 'falling-shape';
-            const config = SHAPES[Math.floor(Math.random() * SHAPES.length)];
-            shape.style.left = Math.random() * (container.clientWidth - 100) + 'px';
-            shape.style.top = '-110px';
-            
-            let svgStr = `<svg viewBox="0 0 100 100">`;
-            if (config.id === 'circle') svgStr += `<circle cx="50" cy="50" r="40" fill="${config.color}"/></svg>`;
-            if (config.id === 'square') svgStr += `<rect x="15" y="15" width="70" height="70" fill="${config.color}"/></svg>`;
-            if (config.id === 'triangle') svgStr += `<polygon points="50,15 90,85 10,85" fill="${config.color}"/></svg>`;
-            if (config.id === 'star') svgStr += `<polygon points="50,5 61,35 95,35 67,55 78,85 50,70 22,85 33,55 5,35 39,35" fill="${config.color}"/></svg>`;
-            
-            shape.innerHTML = svgStr;
-            shape.onclick = () => {
-                state.score += 50; shapeCounts[config.id]++;
-                updateFallingUI(config.id);
-                document.getElementById('score-tag').innerText = `PUNTOS: ${state.score}`;
-                shape.style.transform = "scale(0)";
-                setTimeout(() => shape.remove(), 100);
-            };
-            container.appendChild(shape);
-
-            let pos = -110;
-            const fall = setInterval(() => {
-                if (!state.active) { clearInterval(fall); return; }
-                pos += 2; shape.style.top = pos + 'px';
-                if (pos > window.innerHeight) { shape.remove(); clearInterval(fall); }
-            }, 16);
-        }, 900);
-    }
-
-    function updateFallingUI(type) {
-        const slot = document.getElementById(`target-${type}`);
-        slot.querySelector('.count-text').innerText = `${shapeCounts[type]}/5`;
-        if (shapeCounts[type] >= 5) slot.classList.add('completed');
-    }
-
-    function initFruits() {
-        const table = document.getElementById('fruits-table');
-        table.style.display = 'block';
-        table.innerHTML = '';
-        document.getElementById('current-mode-label').innerText = "FRUTAS";
-        totalPairs = 10;
-        let deck = [];
-        const selection = [...FRUITS_LIST].sort(() => 0.5 - Math.random()).slice(0, totalPairs);
-        selection.forEach(f => { deck.push(f); deck.push(f); });
-        deck.sort(() => 0.5 - Math.random());
-
-        deck.forEach((f, i) => {
-            const card = document.createElement('div');
-            card.className = 'fruit-card';
-            card.dataset.id = f; card.innerText = f;
-            card.style.left = (Math.random() * 85 + 2) + '%';
-            card.style.top = (Math.random() * 85 + 2) + '%';
-            card.style.transform = `rotate(${Math.random() * 40 - 20}deg)`;
-            card.onclick = () => handleFruitSelection(card);
-            table.appendChild(card);
-        });
-    }
-
-    function handleFruitSelection(card) {
-        if (card.classList.contains('vanish')) return;
-        if (selectedCards.length === 0) {
-            card.classList.add('selected'); selectedCards.push(card);
-        } else {
-            const first = selectedCards[0];
-            if (first === card) { card.classList.remove('selected'); selectedCards = []; return; }
-            if (first.dataset.id === card.dataset.id) {
-                card.classList.add('selected');
-                setTimeout(() => {
-                    first.classList.add('vanish'); card.classList.add('vanish');
-                    state.score += 150; matchesFound++;
-                    document.getElementById('score-tag').innerText = `PUNTOS: ${state.score}`;
-                    if (matchesFound === totalPairs) winGame();
-                }, 300);
-                selectedCards = [];
+                if (matchesFound === totalPairs) setTimeout(winGame, 600);
             } else {
-                first.classList.remove('selected'); card.classList.add('selected'); selectedCards = [card];
+                setTimeout(() => {
+                    c1.classList.remove('flipped');
+                    c2.classList.remove('flipped');
+                    selectedCards = [];
+                }, 1000);
             }
         }
     }
 
+    // --- JUEGO: FIESTA DE FRUTAS ---
+    function initFruits() {
+        const table = document.getElementById('fruits-table');
+        table.style.display = 'block'; table.innerHTML = '';
+        document.getElementById('current-mode-label').innerText = "FRUTAS";
+        totalPairs = 6;
+        let deck = [];
+        const selection = [...FRUITS_LIST].sort(() => 0.5 - Math.random()).slice(0, totalPairs);
+        selection.forEach(f => { deck.push(f); deck.push(f); });
+        deck.sort(() => 0.5 - Math.random());
+        
+        deck.forEach((f, i) => {
+            const card = document.createElement('div');
+            card.className = 'fruit-card'; card.dataset.id = f; card.innerText = f;
+            card.style.left = (Math.random() * 70 + 5) + '%';
+            card.style.top = (Math.random() * 70 + 5) + '%';
+            card.onclick = () => {
+                if (!state.active || card.style.opacity === "0") return;
+                if (selectedCards.length === 0) {
+                    card.style.transform = "scale(1.2)";
+                    selectedCards.push(card);
+                } else {
+                    const first = selectedCards[0];
+                    if (first === card) return;
+                    if (first.dataset.id === card.dataset.id) {
+                        card.style.opacity = first.style.opacity = "0";
+                        state.score += 300; matchesFound++;
+                        document.getElementById('score-tag').innerText = `PUNTOS: ${state.score}`;
+                        if (matchesFound === totalPairs) winGame();
+                    } else {
+                        first.style.transform = "scale(1)";
+                    }
+                    selectedCards = [];
+                }
+            };
+            table.appendChild(card);
+        });
+    }
+
+    // --- LLUVIA DE FIGURAS ---
+    function initFalling() {
+        const container = document.getElementById('falling-container');
+        document.getElementById('falling-area').style.display = 'block';
+        document.getElementById('falling-targets').style.display = 'flex';
+        document.getElementById('current-mode-label').innerText = "FIGURAS";
+        container.innerHTML = '';
+        shapeCounts = { circle:0, square:0, triangle:0, star:0 };
+        document.querySelectorAll('.target-slot').forEach(s => s.style.opacity = "0.6");
+
+        spawnInt = setInterval(() => {
+            if (!state.active) return;
+            const config = SHAPES[Math.floor(Math.random() * SHAPES.length)];
+            const shape = document.createElement('div');
+            shape.style.cssText = `position:absolute; width:60px; height:60px; left:${Math.random()*85}%; top:-80px; cursor:pointer;`;
+            shape.innerHTML = `<svg viewBox="0 0 100 100">${getShapePath(config.id, config.color)}</svg>`;
+            shape.onclick = () => {
+                shape.remove();
+                shapeCounts[config.id]++;
+                state.score += 50;
+                document.getElementById('score-tag').innerText = `PUNTOS: ${state.score}`;
+                const slot = document.getElementById(`target-${config.id}`);
+                slot.querySelector('.count-text').innerText = `${Math.min(10, shapeCounts[config.id])}/10`;
+                if(shapeCounts[config.id] >= 10) slot.style.opacity = "1";
+                if(Object.values(shapeCounts).every(v => v >= 10)) winGame();
+            };
+            container.appendChild(shape);
+            let y = -80;
+            const anim = setInterval(() => {
+                if(!state.active) { clearInterval(anim); return; }
+                y += 3; shape.style.top = y + 'px';
+                if(y > 900) { shape.remove(); clearInterval(anim); }
+            }, 16);
+        }, 1000);
+    }
+
+    function getShapePath(type, color) {
+        if (type === 'circle') return `<circle cx="50" cy="50" r="40" fill="${color}"/>`;
+        if (type === 'square') return `<rect x="15" y="15" width="70" height="70" fill="${color}"/>`;
+        if (type === 'triangle') return `<polygon points="50,15 90,85 10,85" fill="${color}"/>`;
+        return `<polygon points="50,5 61,35 95,35 67,55 78,85 50,70 22,85 33,55 5,35 39,35" fill="${color}"/>`;
+    }
+
+    // --- LABERINTO ---
+    function initMaze() {
+        const container = document.getElementById('maze-container');
+        container.style.display = 'block';
+        document.getElementById('maze-controls').style.display = 'flex';
+        document.getElementById('current-mode-label').innerText = "LABERINTO";
+        const board = document.getElementById('maze-board');
+        board.innerHTML = '';
+        maze.size = 15;
+        maze.cellSize = container.clientWidth / maze.size;
+        maze.grid = Array(maze.size).fill().map(() => Array(maze.size).fill(0));
+        
+        function carve(x, y) {
+            maze.grid[y][x] = 1;
+            const d = [[0,2],[0,-2],[2,0],[-2,0]].sort(() => Math.random() - 0.5);
+            for(let [dx,dy] of d) {
+                let nx = x+dx, ny = y+dy;
+                if(nx > 0 && nx < maze.size-1 && ny > 0 && ny < maze.size-1 && maze.grid[ny][nx] === 0) {
+                    maze.grid[y+dy/2][x+dx/2] = 1; carve(nx, ny);
+                }
+            }
+        }
+        carve(1, 1);
+        maze.grid[13][13] = 1;
+        
+        for(let y=0; y<maze.size; y++) {
+            for(let x=0; x<maze.size; x++) {
+                if(maze.grid[y][x] === 0) {
+                    const w = document.createElement('div');
+                    w.className = 'maze-wall';
+                    w.style.width = w.style.height = maze.cellSize + 'px';
+                    w.style.left = (x * maze.cellSize) + 'px';
+                    w.style.top = (y * maze.cellSize) + 'px';
+                    board.appendChild(w);
+                }
+            }
+        }
+        maze.player = {x: 1, y: 1};
+        const g = document.getElementById('maze-goal');
+        g.style.width = g.style.height = maze.cellSize + 'px';
+        g.style.left = (13 * maze.cellSize) + 'px'; g.style.top = (13 * maze.cellSize) + 'px';
+        updateMaze();
+    }
+
+    function moveMaze(dir) {
+        let nx = maze.player.x, ny = maze.player.y;
+        if(dir==='up') ny--; if(dir==='down') ny++; if(dir==='left') nx--; if(dir==='right') nx++;
+        if(maze.grid[ny][nx] === 1) {
+            maze.player.x = nx; maze.player.y = ny; updateMaze();
+            if(nx === 13 && ny === 13) { state.score += 2000; winGame(); }
+        }
+    }
+
+    function updateMaze() {
+        const p = document.getElementById('maze-player');
+        p.style.width = p.style.height = (maze.cellSize * 0.7) + 'px';
+        p.style.left = (maze.player.x * maze.cellSize + maze.cellSize * 0.15) + 'px';
+        p.style.top = (maze.player.y * maze.cellSize + maze.cellSize * 0.15) + 'px';
+    }
+
+    // --- CORE ---
     function startGlobalTimer() {
-        if (timerInt) clearInterval(timerInt);
+        if(timerInt) clearInterval(timerInt);
         timerInt = setInterval(() => {
             state.timeLeft--;
             const m = Math.floor(state.timeLeft / 60);
@@ -588,28 +663,14 @@
     function winGame() {
         state.active = false;
         clearInterval(timerInt); clearInterval(spawnInt);
-        const summary = document.getElementById('summary-container');
-        const mainBtn = document.getElementById('win-main-btn');
-        const menuBtn = document.getElementById('win-menu-btn');
-
-        if (state.score > 0 || matchesFound > 0) {
-            triggerWinEffects();
-        }
-
-        if (state.mode === 'letters') {
-            mainBtn.innerText = "JUGAR DE NUEVO";
-            menuBtn.style.display = 'block';
-        } else {
-            mainBtn.innerText = "MENU PRINCIPAL";
-            menuBtn.style.display = 'none';
-        }
-
-        summary.innerHTML = `
-            <div style="font-size: 5rem; margin: 20px;">🏆</div>
-            <div style="font-size: 1.5rem; font-family: var(--font-bold); color: var(--accent-cyan)">PUNTOS: ${state.score}</div>
-        `;
+        document.getElementById('summary-container').innerHTML = `<h3 style="color:var(--accent-cyan)">PUNTUACIÓN FINAL: ${state.score}</h3>`;
         document.getElementById('win-overlay').style.display = 'flex';
+        playTriumph();
     }
+
+    window.addEventListener('keydown', (e) => {
+        if(state.mode === 'maze') moveMaze(e.key.replace('Arrow','').toLowerCase());
+    });
 </script>
 </body>
 </html>
