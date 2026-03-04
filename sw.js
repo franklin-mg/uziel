@@ -1,12 +1,13 @@
 /**
- * Service Worker para GameUziel - Versión 2
+ * Service Worker para GameUziel - Versión 3
  * Estrategia: Offline-First (Cache First, then Network)
  */
 
-const CACHE_NAME = 'gameuziel-cache-v2';
+const CACHE_NAME = 'gameuziel-cache-v3';
+const CACHE_VERSION = '3.0.0';
 const ASSETS_TO_CACHE = [
     './',
-    './gameuziel.html',
+    './index.html',
     './manifest.json',
     'https://fonts.googleapis.com/css2?family=Archivo+Black&family=Rubik:wght@700;900&display=swap',
     'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js'
@@ -66,3 +67,4 @@ self.addEventListener('fetch', (event) => {
         })
     );
 });
+
